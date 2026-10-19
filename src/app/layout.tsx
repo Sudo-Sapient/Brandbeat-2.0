@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Cormorant_Garamond, Inter } from "next/font/google";
 import { ProjectProvider } from "@/lib/store";
 import { ViewTransitions } from "next-view-transitions";
 import { IconSprite, NavDirection } from "@/components/ui";
 import "./globals.css";
 
-// ponytail: Inter stands in for Söhne (licensed) — same 100–700 range
+// Typography specified by the supplied Brandbeat color & brandbook.
 const sans = Inter({ variable: "--font-sans", subsets: ["latin"] });
+const display = Cormorant_Garamond({ variable: "--font-display", subsets: ["latin"], weight: ["500", "600"] });
 
 export const metadata: Metadata = {
   title: "Brandbeat",
@@ -18,7 +19,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     // pages hand over with the browser's View Transitions instead of swapping instantly
     <ViewTransitions>
       <html lang="en">
-        <body className={sans.variable}>
+        <body className={`${sans.variable} ${display.variable}`}>
           <IconSprite />
           <NavDirection />
           <ProjectProvider>{children}</ProjectProvider>

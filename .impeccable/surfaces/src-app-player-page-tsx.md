@@ -4,14 +4,14 @@ slug: "src-app-player-page-tsx"
 primary_target: "src/app/player/page.tsx"
 related_targets: ["src/app/week/page.tsx","src/components/steps.tsx","src/app/page.tsx"]
 ---
-
-Scope: whole Brandbeat 2.0 app (setup steps 1–6, week, player). Mode: Operate.
-Audience: venue owner setting up once on a laptop; staff glancing at the player on a counter tablet.
+Scope: whole application. Mode: Operate. Audience: venue owners and staff.
 
 ## Direction contract
-THESIS: Brandbeat programmes a venue the way a radio station programmes an hour: a clock wheel and a cue sheet. Refuses the dark music-app sidebar-and-tiles default and the cream editorial look.
-OWN-WORLD: cool studio-panel grey ground, ink black, hardware-key buttons with 2px corners, ruled cue-sheet rows with mono time codes, daypart segments amber/blue/plum, ON AIR red reserved for live and current. Condensed console display face, newspaper grotesk body.
-STORY: owner sees each step as a line on today's running order, approves it, and ends with a clock of their week they trust.
-FIRST VIEWPORT: player: a large programme clock (07–22) left, aurora brand disc at its centre, sweep hand at now; cue sheet NOW/NEXT right with big transport keys.
-FORM: The Programme Clock, my top-ranked candidate (pick); seed 769dae80.
+THESIS: Plain, text-first B2B setup and music operations; the user's explicit brief replaces the decorative music-player identity.
+OWN-WORLD: Supplied Brandbeat brandbook: Bone canvas, white app surfaces, Penguin Red navigation/actions, Black/Slate text, Cormorant identity and headings, Inter controls.
+STORY: Describe brand, verify Aaker identity, review music, approve and run a week.
+FIRST VIEWPORT: Compact navigation, task heading, labelled fields or data rows; primary action at the bottom. Week exposes three daypart energy graphs under day selectors.
+FORM: User-pinned conventional B2B layout overrides direction seed 6497059f and decorative catalog challengers. No ornamental motion; state changes provide feedback.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+
+Authority: /Users/sidbhat/Downloads/brandbeat_ui_book_colors.pdf, v1.0 October 2026. UI palette is now specified, not provisional. Client business decks remain separate intake assets. Deployed graph comparison requires app access; only public landing is accessible. No new rasters shipped.

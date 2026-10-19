@@ -36,6 +36,15 @@ assert.ok(r.every((t, i) => i === 0 || r[i - 1].fit! >= t.fit!));
   assert.equal(v[0].id, keep[0].id);
   assert.ok(v.slice(1).every((t) => !old.includes(t.id)));
 
+  // A small eligible catalogue must not silently shrink the sample list.
+  const limited = { ...p, banned: LIBRARY.slice(6).map((t) => t.id), soundboard: { ...sb, avoid: [] } };
+  const first = await pickVibe(limited, "morning");
+  const again = await pickVibe(limited, "morning", [first[0]], first.map((t) => t.id));
+  assert.equal(again.length, 5, "regeneration must retain five songs when only one fresh match exists");
+  assert.equal(new Set(again.map((t) => t.id)).size, 5);
+  assert.equal(again[0].id, first[0].id);
+  assert.ok(again.some((t) => !first.some((old) => old.id === t.id)));
+
   // the day plan puts approved songs first and drops banned ones
   const approved = { tracks: v, pinned: [], approved: true };
   const day = buildDay({ ...p, vibe: { morning: approved, midday: approved, evening: approved }, banned: ["t0", v[1].id] }, 2);
@@ -43,5 +52,9 @@ assert.ok(r.every((t, i) => i === 0 || r[i - 1].fit! >= t.fit!));
   assert.equal(day[0].tracks[0].id, v[0].id);
   assert.ok(day.every((d) => d.tracks.every((t) => t.id !== v[1].id)));
 
-  console.log("ok: song matching");
+  const edited = { ...p, vibe: { morning: approved, midday: approved, evening: approved }, scheduleEdits: { 0: { morning: [v[2], v[0]] } } };
+  assert.deepEqual(buildDay(edited, 0)[0].tracks.map((t) => t.id), [v[2].id, v[0].id]);
+  assert.notDeepEqual(buildDay(edited, 1)[0].tracks.map((t) => t.id), [v[2].id, v[0].id]);
+  assert.deepEqual(buildDay({ ...edited, banned: [v[2].id] }, 0)[0].tracks.map((t) => t.id), [v[0].id]);
+  console.log("ok: song matching and manual schedules");
 })();

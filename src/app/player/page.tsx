@@ -2,17 +2,14 @@
 import { Link } from "next-view-transitions";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import { Icon, Num, Shell } from "@/components/ui";
 import { Karaoke } from "@/components/steps";
 import { useProject } from "@/lib/store";
-import { DAYPARTS, DAYS, VOICES, brandPalette, buildDay, fmtClock } from "@/lib/ai";
-import { playFpo, setVolume, speak, stopFpo, toHex } from "@/lib/browser";
+import { DAYPARTS, DAYS, VOICES, buildDay, fmtClock } from "@/lib/ai";
+import { playFpo, setVolume, speak, stopFpo } from "@/lib/browser";
 import type { Promo } from "@/lib/types";
 
 const PART_COLOUR = { morning: "var(--yellow)", midday: "var(--blue)", evening: "var(--pink)" };
-// the landing page's turntable is the everyday player; the flat aurora holds its place while three.js loads
-const RecordHero = dynamic(() => import("@/components/record"), { ssr: false, loading: () => <div className="art-wait" /> });
 const OPEN = 7 * 60, CLOSE = 22 * 60;
 const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const partAt = (m: number) => Math.max(0, DAYPARTS.findIndex((d) => m >= d.start && m < d.end));
@@ -110,13 +107,13 @@ function Player() {
   }, [clock]);
 
   if (!ready) return null;
-  if (!plan || !track)
+  if (!plan || !track || !DAYPARTS.every((d) => p.vibe?.[d.id].approved))
     return (
       <Shell step={8}>
         <div className="empty">
-          <h1 className="serif">Nothing to play <em>just yet.</em></h1>
-          <p>Approve your sample songs and build your week, and your player will be waiting here.</p>
-          <Link className="btn" href="/setup/5"><Icon id="back" size={16} />Go to the vibe check</Link>
+          <h1>Review songs first</h1>
+          <p>Build your week first.</p>
+          <Link className="btn" href="/setup/5"><Icon id="back" size={16} />Review songs</Link>
         </div>
       </Shell>
     );
@@ -128,32 +125,23 @@ function Player() {
     setUndo({ id: track.id, title: track.title });
   };
   const pct = (m: number) => ((m - OPEN) / (CLOSE - OPEN)) * 100;
-  const words = track.title.split(" ");
   const stats = [
-    { k: "Energy", v: track.energy, w: track.energy, h: "Calm 0 to lively 100" },
-    { k: "Brand fit", v: track.fit ?? 80, w: track.fit ?? 80, h: "How closely it matches your brand map" },
-    { k: "Warmth", v: track.warmth, w: track.warmth, h: "Acoustic and mellow vs bright and electronic" },
-    { k: "Tempo", v: track.bpm, w: Math.min(100, ((track.bpm - 60) / 80) * 100), h: "Beats per minute", unit: "BPM" },
+    { k: "Energy", v: track.energy, w: track.energy },
+    { k: "Brand fit", v: track.fit ?? 80, w: track.fit ?? 80 },
+    { k: "Warmth", v: track.warmth, w: track.warmth },
+    { k: "Tempo", v: track.bpm, w: Math.min(100, ((track.bpm - 60) / 80) * 100), unit: "BPM" },
   ];
 
   return (
     <Shell crumbs={[{ label: "This week", href: "/week" }, { label: DAYS[day] }, { label: "Now playing" }]}>
       <div className="player">
-        <div className="sleeve-wrap">
-          <div className="sleeve deck3d"><RecordHero palette={brandPalette(p.brand)} name={p.brand.name} part={part.id} playing={playing && !announcing} swapKey={track.id} /></div>
-          <div className="caption"><span className="serif">{p.brand.name}</span><span>{DAYS[day]} · {part.label}</span></div>
-          <div className="legend" aria-label="What the cover art shows">
-            <div><b>Colour</b>Your brand palette, lit for the time of day<span className="swatches">{brandPalette(p.brand).map((c, i) => <i key={i} style={{ background: toHex(c) }} />)}</span></div>
-            <div><b>Movement</b>How energetic the song is<br />Energy {track.energy}</div>
-            <div><b>Speed</b>The song&apos;s tempo<br />{track.bpm} BPM</div>
-          </div>
-        </div>
-
         <div className="np">
+          <section className="player-console" aria-label="Music player">
+          <div className="playback-state" role="status"><span className={playing && !announcing ? "live-dot active" : "live-dot"} aria-hidden="true" />{announcing ? "Announcement" : playing ? "Playing" : "Paused"}</div>
           <p className="meta">Song {(idx % tracks.length) + 1} of {tracks.length} · {part.label}</p>
-          <h1 className="serif">{words.slice(0, -1).join(" ")} <em>{words.at(-1)}.</em></h1>
-          <p className="meta">{track.desc} · {track.genre} · placeholder audio</p>
-          {track.why && <p className="why"><b>Why it&apos;s playing:</b> {track.why}.</p>}
+          <h1>{track.title}</h1>
+          <p className="meta">{track.desc} · {track.genre}</p>
+          {track.why && <details className="song-reason"><summary>Why this song?</summary><p>{track.why}</p></details>}
           {announcing && (
             <div className="announce" role="status">
               <span className="announce-head"><Icon id="mic" />On the mic: {announcing}</span>
@@ -173,18 +161,18 @@ function Player() {
             <div className="ctrls">
               <button className="big" onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}><Icon id={playing ? "pause" : "play"} /></button>
               <button className="ctrl" onClick={skip}><Icon id="skip" />Skip</button>
-              <button className="link ban-link" onClick={ban}>Never play this song</button>
+              <button className="link ban-link" onClick={ban}>Block song</button>
               <label className="vol"><Icon id="vol" /><span className="sr">Volume</span><input type="range" min={0} max={100} value={vol} onChange={(e) => setVol(+e.target.value)} /></label>
             </div>
           </div>
 
+          </section>
           <div className="profile">
             {stats.map((s) => (
               <div key={s.k} className="stat">
                 <div className="k">{s.k}</div>
                 <div className="v serif"><Num value={s.v} />{s.unit && <small>{s.unit}</small>}</div>
                 <div className="meter"><i style={{ transform: `scaleX(${s.w / 100})` }} /></div>
-                <div className="h">{s.h}</div>
               </div>
             ))}
           </div>
@@ -193,7 +181,7 @@ function Player() {
             <div className="day-head">
               <h3>{DAYS[day]} at {p.brand.name}</h3>
               <p>
-                {nextPromo ? <>Next announcement: <b>{nextPromo.promo.title}</b> in {nextPromo.m - clock} min · <button className="link" onClick={() => announce(nextPromo.promo)}>Play it now</button></> : "No more announcements today"}
+                {nextPromo ? <>Next: <b>{nextPromo.promo.title}</b> in {nextPromo.m - clock} min · <button className="link" onClick={() => announce(nextPromo.promo)}>Play now</button></> : "No more announcements"}
               </p>
             </div>
             <div className="track-line">

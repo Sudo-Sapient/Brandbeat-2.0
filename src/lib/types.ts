@@ -5,6 +5,7 @@ export type RGB = [number, number, number]; // 0..1
 
 export type Brand = {
   name: string;
+  website?: string; // optional for saved projects created before website intake
   category: string;
   description: string;
   assets: { name: string; kind: "logo" | "photo" | "pdf" }[];
@@ -70,4 +71,6 @@ export type Project = {
   vibe: Record<DaypartId, VibeSet> | null;
   promos: Promo[];
   banned: string[];
+  regeneratePart?: DaypartId;
+  scheduleEdits?: Record<string, Partial<Record<DaypartId, Track[]>>>;
 };

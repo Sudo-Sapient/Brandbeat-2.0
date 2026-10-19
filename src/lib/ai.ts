@@ -165,8 +165,14 @@ export function rank(p: Pick<Project, "soundboard" | "brandMap" | "banned">, par
 
 export async function pickVibe(p: Project, part: DaypartId, keep: Track[] = [], exclude: string[] = []): Promise<Track[]> {
   await think(700);
-  const picks = rank(p, part, [...exclude, ...keep.map((t) => t.id)], exclude.length ? 8 : 0).slice(0, 5 - keep.length);
-  return [...keep, ...picks];
+  const eligible = rank(p, part);
+  const eligibleIds = new Set(eligible.map((t) => t.id));
+  const pinned = [...new Map(keep.filter((t) => eligibleIds.has(t.id)).map((t) => [t.id, t])).values()].slice(0, 5);
+  const picks = rank(p, part, [...exclude, ...pinned.map((t) => t.id)], exclude.length ? 8 : 0).slice(0, 5 - pinned.length);
+  const selected = [...pinned, ...picks];
+  // Prefer fresh matches; retain eligible previous songs if the catalogue is small.
+  const ids = new Set(selected.map((t) => t.id));
+  return [...selected, ...eligible.filter((t) => !ids.has(t.id)).slice(0, 5 - selected.length)];
 }
 
 export async function draftPromos(b: Brand): Promise<Promo[]> {
@@ -187,7 +193,7 @@ export function buildDay(p: Project, day: number) {
     const rest = rank(p, dp.id, approved.map((t) => t.id)).slice(0, 12);
     // ponytail: rotate by day so the week isn't identical; real scheduler would balance repeats across the week
     const more = [...rest.slice(day % 4), ...rest.slice(0, day % 4)].slice(0, 7);
-    return { part: dp, tracks: [...approved, ...more], promos: p.promos.filter((x) => x.days.includes(day) && x.times.some((m) => m >= dp.start && m < dp.end)) };
+    return { part: dp, tracks: (p.scheduleEdits?.[day]?.[dp.id] ?? [...approved, ...more]).filter((t) => !p.banned.includes(t.id)), promos: p.promos.filter((x) => x.days.includes(day) && x.times.some((m) => m >= dp.start && m < dp.end)) };
   });
 }
 
