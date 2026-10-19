@@ -10,10 +10,15 @@
     "check": "npx --yes tsx@4.20.6 scripts/check.ts"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@rive-app/react-canvas": "^4.36.0",
     "gsap": "^3.13.0",
-    "next": "15.5.4",
+    "next": "^15.5.28",
+    "next-view-transitions": "^0.3.5",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "three": "^0.186.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -21,6 +26,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.186.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "tailwindcss": "^4",

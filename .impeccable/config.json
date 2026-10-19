@@ -1,28 +1,14 @@
 {
+  "buildPath": "code",
   "detector": {
     "ignoreRules": [],
     "ignoreFiles": [],
     "ignoreValues": [
       {
-        "rule": "overused-font",
-        "value": "instrument serif",
-        "createdAt": "2026-10-18T09:33:39.271Z",
-        "reason": "User-supplied Epidemic Sound style reference specifies an editorial serif display face; Instrument Serif is the stand-in"
-      },
-      {
-        "rule": "overused-font",
-        "value": "inter",
-        "createdAt": "2026-10-18T09:33:39.287Z",
-        "reason": "User-supplied Epidemic Sound style reference specifies Inter as the UI sans"
-      },
-      {
-        "rule": "cream-palette",
-        "value": "*",
-        "files": [
-          ".superpowers/brainstorm/80227-1792314503/content/direction-e-v2.html"
-        ],
-        "createdAt": "2026-10-18T09:33:39.300Z",
-        "reason": "Warm bone surfaces come from the user-supplied Epidemic Sound reference palette (#f1f0eb)"
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "createdAt": "2026-10-18T15:25:04.644Z",
+        "reason": "User chose 'Press & hover feedback: buttons/chips press with a spring'; the overshoot is only on press release (scale 0.96 to 1), never on layout or page motion"
       }
     ]
   }

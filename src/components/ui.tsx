@@ -1,12 +1,17 @@
 "use client";
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Link } from "next-view-transitions";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
+import { Flip } from "gsap/Flip";
+import { useRive, useStateMachineInput } from "@rive-app/react-canvas";
 import { useProject } from "@/lib/store";
-import { lightFor } from "@/lib/browser";
+import { lightFor, toHex } from "@/lib/browser";
+import { brandPalette } from "@/lib/ai";
 import type { RGB } from "@/lib/types";
 
-export const reducedMotion = () => typeof window !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+// one media query for the whole app, read every frame by the canvases
+const rmQuery = typeof window !== "undefined" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+export const reducedMotion = () => !!rmQuery?.matches;
 
 /* ---------- icons: one drawn set, one stroke ---------- */
 export function IconSprite() {
@@ -35,6 +40,39 @@ export const Icon = ({ id, size }: { id: string; size?: number }) => (
   <svg className="i" aria-hidden="true" style={size ? { width: size, height: size } : undefined}><use href={`#i-${id}`} /></svg>
 );
 
+gsap.registerPlugin(Flip);
+
+/* ---------- Flip: call capture(selector) right before a state change; the next render glides from the old layout ---------- */
+export function useFlip() {
+  const state = useRef<{ snap: Flip.FlipState; targets: string } | null>(null);
+  useLayoutEffect(() => {
+    if (!state.current) return;
+    // targets: re-query, so elements React re-created (same data-flip-id) are matched to their old selves
+    Flip.from(state.current.snap, {
+      targets: state.current.targets,
+      duration: 0.45,
+      ease: "expo.out",
+      nested: true,
+      onEnter: (els) => gsap.fromTo(els, { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: 0.35, ease: "expo.out" }),
+    });
+    state.current = null;
+  });
+  return (targets: string) => { if (!reducedMotion()) state.current = { snap: Flip.getState(targets), targets }; };
+}
+
+/* ---------- which way the next page should slide: Back links go right-to-left ---------- */
+export function NavDirection() {
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const el = (e.target as Element).closest("a,button");
+      if (el) document.documentElement.dataset.nav = el.hasAttribute("data-back") ? "back" : "forward";
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
+  return null;
+}
+
 /* ---------- app frame ---------- */
 export const STEPS = [
   { n: 1, label: "Brand", href: "/setup/1" },
@@ -47,19 +85,29 @@ export const STEPS = [
   { n: 8, label: "Player", href: "/player" },
 ];
 
-export function Shell({ step, crumbs, children }: { step?: number; crumbs?: { label: string; href?: string }[]; children: React.ReactNode }) {
+export function Shell({ step, crumbs, minimal, children }: { step?: number; crumbs?: { label: string; href?: string }[]; minimal?: React.ReactNode; children: React.ReactNode }) {
   const { p } = useProject();
   const current = STEPS.find((s) => s.n === step);
+  // morning / midday / evening tints come from the brand's own palette, lit for each part of the day
+  const pal = brandPalette(p.brand);
+  const tint = (part: string) => `rgba(${lightFor(pal, part)[1].map((v) => Math.round(v * 255)).join(", ")}, 0.34)`;
+  const partVars = { "--yellow": tint("morning"), "--blue": tint("midday"), "--pink": tint("evening") } as React.CSSProperties;
   return (
-    <div className="screen">
+    <div className="screen" style={partVars}>
+      <a href="#main" className="skip">Skip to content</a>
       <header className="top">
         <Link href="/" className="logo">brandbeat</Link>
         {p.brand.name && (
-          <button className="venue" aria-label={`Switch venue, current: ${p.brand.name}`}>
-            {p.brand.name} <Icon id="down" size={16} />
-          </button>
+          // ponytail: plain label until venue switching exists; becomes a menu when accounts hold several venues
+          <span className="venue">
+            {/* the brand's cover in miniature: the landing record flies here when you enter the app */}
+            <i className="venue-cover" aria-hidden="true" style={{ background: `linear-gradient(135deg, ${brandPalette(p.brand).map(toHex).join(", ")})` }} />
+            {p.brand.name}
+          </span>
         )}
-        {crumbs ? (
+        {minimal ? (
+          <div className="top-action">{minimal}</div>
+        ) : crumbs ? (
           <ol className="crumbs" aria-label="Breadcrumb">
             {crumbs.map((c, i) => (
               <li key={c.label} aria-current={i === crumbs.length - 1 ? "page" : undefined}>
@@ -80,7 +128,7 @@ export function Shell({ step, crumbs, children }: { step?: number; crumbs?: { la
           </>
         )}
       </header>
-      {children}
+      <main id="main">{children}</main>
     </div>
   );
 }
@@ -95,17 +143,32 @@ export function StepPage(props: {
   busy?: string[] | null;
 }) {
   const prev = STEPS.find((s) => s.n === props.n - 1);
+  const root = useRef<HTMLDivElement>(null);
+  // one entrance per step: headline rises, then the lede and the work settle in under it
+  useEffect(() => {
+    if (!root.current || reducedMotion()) return;
+    // context + revert: a cancelled run (e.g. React's double effect in dev) restores styles instead of leaving them hidden
+    const ctx = gsap.context(() => {
+      gsap.timeline({ defaults: { ease: "expo.out" } })
+        .from(".hero h1", { yPercent: 18, opacity: 0, duration: 0.8 })
+        .from(".hero p", { y: 10, opacity: 0, duration: 0.6 }, "-=0.55")
+        .from(".body", { y: 16, opacity: 0, duration: 0.7 }, "-=0.45");
+    }, root);
+    return () => ctx.revert();
+  }, [props.n]);
   return (
     <Shell step={props.n}>
+      <div ref={root} style={{ display: "contents" }}>
       <div className="hero">
         <h1 className="serif">{props.title}</h1>
         <p>{props.lede}</p>
       </div>
-      <div className="body">{props.children}</div>
+      <div className={`body${props.busy ? " is-busy" : ""}`} aria-busy={!!props.busy}>{props.children}</div>
+      </div>
       <div className="proceed">
         {props.busy ? <Thinking lines={props.busy} /> : <p aria-live="polite">{props.next.status}</p>}
         <div className="proceed-actions">
-          {prev && <Link className="btn ghost" href={prev.href}><Icon id="back" size={16} />Back</Link>}
+          {prev && <Link className="btn ghost" data-back href={prev.href}><Icon id="back" size={16} />Back</Link>}
           <button className="btn" onClick={props.next.onClick} disabled={props.next.disabled || !!props.busy}>
             {props.next.label} <Icon id="arrow" size={16} />
           </button>
@@ -113,6 +176,29 @@ export function StepPage(props: {
       </div>
     </Shell>
   );
+}
+
+/* ---------- Rive: the brandbeat mark — equaliser while working, checkmark when done ---------- */
+export function RiveMark({ done = false, size = 28 }: { done?: boolean; size?: number }) {
+  const { rive, RiveComponent } = useRive({ src: "/rive/thinking.riv", artboard: "Thinking", stateMachine: "Main", autoplay: true });
+  const input = useStateMachineInput(rive, "Main", "done");
+  useEffect(() => { if (input) input.value = done; }, [input, done]);
+  return <span className="rive-mark" style={{ width: size, height: size }} aria-hidden="true"><RiveComponent /></span>;
+}
+
+/* ---------- a number that counts to its new value (song stats) ---------- */
+export function Num({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const shown = useRef(value);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (reducedMotion()) { el.textContent = String(value); shown.current = value; return; }
+    const o = { n: shown.current };
+    const tw = gsap.to(o, { n: value, duration: 0.9, ease: "expo.out", onUpdate: () => { el.textContent = String(Math.round(o.n)); shown.current = o.n; } });
+    return () => { tw.kill(); };
+  }, [value]);
+  return <span ref={ref}>{value}</span>;
 }
 
 /* ---------- the AI at work: cycles plain-language status lines ---------- */
@@ -127,10 +213,10 @@ export function Thinking({ lines }: { lines: string[] }) {
     if (ref.current && !reducedMotion()) gsap.fromTo(ref.current, { y: 8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "expo.out" });
   }, [i]);
   return (
-    <p className="thinking" role="status">
-      <span className="pulse" aria-hidden="true" />
+    <div className="thinking" role="status">
+      <RiveMark />
       <span ref={ref}>{lines[i]}</span>
-    </p>
+    </div>
   );
 }
 
@@ -185,7 +271,7 @@ export function Aurora({ palette, part, energy = 50, bpm = 90, playing = true }:
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
-    return () => { cancelAnimationFrame(raf); io.disconnect(); };
+    return () => { cancelAnimationFrame(raf); io.disconnect(); gl.getExtension("WEBGL_lose_context")?.loseContext(); };
   }, []);
 
   useEffect(() => {
@@ -193,8 +279,11 @@ export function Aurora({ palette, part, energy = 50, bpm = 90, playing = true }:
     const [a, b, c] = lightFor(palette, part);
     const d = s.first || reducedMotion() ? 0 : 1.8;
     s.first = false;
-    (["c1", "c2", "c3"] as const).forEach((k, j) => gsap.to(s[k], { 0: [a, b, c][j][0], 1: [a, b, c][j][1], 2: [a, b, c][j][2], duration: d, ease: "sine.inOut" }));
-    gsap.to(s, { warp: 0.3 + (energy / 100) * 2.2, speed: bpm / 80, duration: d, ease: "sine.inOut" });
+    const tweens = [
+      ...(["c1", "c2", "c3"] as const).map((k, j) => gsap.to(s[k], { 0: [a, b, c][j][0], 1: [a, b, c][j][1], 2: [a, b, c][j][2], duration: d, ease: "sine.inOut", overwrite: "auto" })),
+      gsap.to(s, { warp: 0.3 + (energy / 100) * 2.2, speed: bpm / 80, duration: d, ease: "sine.inOut", overwrite: "auto" }),
+    ];
+    return () => tweens.forEach((t) => t.kill());
   }, [palette, part, energy, bpm]);
 
   useEffect(() => { u.current.playing = playing; }, [playing]);

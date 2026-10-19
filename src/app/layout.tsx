@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, Instrument_Serif } from "next/font/google";
+import { Inter } from "next/font/google";
 import { ProjectProvider } from "@/lib/store";
-import { IconSprite } from "@/components/ui";
+import { ViewTransitions } from "next-view-transitions";
+import { IconSprite, NavDirection } from "@/components/ui";
 import "./globals.css";
 
+// ponytail: Inter stands in for Söhne (licensed) — same 100–700 range
 const sans = Inter({ variable: "--font-sans", subsets: ["latin"] });
-// ponytail: free stand-in for the licensed editorial serif (Canela / GT Sectra) in production
-const serif = Instrument_Serif({ variable: "--font-serif", subsets: ["latin"], weight: "400", style: ["normal", "italic"] });
 
 export const metadata: Metadata = {
   title: "Brandbeat",
@@ -15,11 +15,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${sans.variable} ${serif.variable}`}>
-        <IconSprite />
-        <ProjectProvider>{children}</ProjectProvider>
-      </body>
-    </html>
+    // pages hand over with the browser's View Transitions instead of swapping instantly
+    <ViewTransitions>
+      <html lang="en">
+        <body className={sans.variable}>
+          <IconSprite />
+          <NavDirection />
+          <ProjectProvider>{children}</ProjectProvider>
+        </body>
+      </html>
+    </ViewTransitions>
   );
 }

@@ -19,6 +19,7 @@ export type Segment = {
   wants: string;
   kept: boolean;
   custom?: boolean;
+  peak?: [number, number][]; // when they tend to be in, minutes since midnight
 };
 
 export type AakerKey = "product" | "organisation" | "person" | "symbol";
